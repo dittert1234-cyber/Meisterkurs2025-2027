@@ -777,7 +777,22 @@ renderArchiveList();
     const rows=[];
     for(const key of keys){
       let data; try{data=JSON.parse(localStorage.getItem(key)||'{}')}catch{continue;}
-      for(const date of (data.dates||[])){
+      const month=key.slice('attendance:'.length);
+      const [year,monthNum]=month.split('-').map(Number);
+      const monthStart=`${month}-01`;
+      const nextMonthDate=new Date(year,monthNum,1);
+      const monthEnd=`${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth()+1).padStart(2,'0')}-01`;
+      const keptDates=[...new Set((data.dates||[]))].sort();
+      // A month cache is authoritative for which teaching dates exist.
+      // Delete cloud rows for dates removed from that month, so they cannot reappear after login.
+      let deleteQuery=sb.from('attendance_days').delete()
+        .gte('attendance_date',monthStart).lt('attendance_date',monthEnd);
+      if(keptDates.length){
+        deleteQuery=deleteQuery.not('attendance_date','in',`(${keptDates.map(date=>`\"${date}\"`).join(',')})`);
+      }
+      const {error:deleteError}=await deleteQuery;
+      if(deleteError) throw new Error(`Gelöschte Unterrichtstage aus ${month} konnten nicht in Supabase abgeglichen werden: ${deleteError.message}`);
+      for(const date of keptDates){
         const row=data.attendance?.[date]||{};
         for(let i=0;i<participants.length;i++){
           const pid=participantMap.get(i); if(!pid) continue;
