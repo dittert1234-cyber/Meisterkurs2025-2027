@@ -722,6 +722,24 @@ async function saveAllNow(){
   }
 }
 $("saveNow")?.addEventListener("click",saveAllNow);
+$("refreshNow")?.addEventListener("click",async()=>{
+  const btn=$("refreshNow");
+  if(!window.attendanceCloud || !window.attendanceCloud.isReady()){
+    showStatus("Aktualisieren nicht möglich: Bitte anmelden und auf die Supabase-Verbindung warten.",true);
+    return;
+  }
+  if(btn){btn.disabled=true;btn.textContent="Aktualisiert …";}
+  showStatus("Aktualisieren läuft: Cloud-Daten werden geladen und mit fehlenden lokalen Einträgen abgeglichen …",false,false);
+  try {
+    await window.attendanceCloud.refreshAll();
+    showStatus("✓ Aktualisiert. Cloud-Daten wurden geladen; fehlende lokale Einträge wurden ergänzt und der abgeglichene Stand gespeichert.",false,true);
+  } catch(err) {
+    console.error(err);
+    showStatus("✕ Aktualisieren fehlgeschlagen. Bitte Verbindung prüfen. Fehler: "+(err.message||err),true);
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent="Aktualisieren";}
+  }
+});
 $("globalHourCorrection")?.addEventListener("change",()=>{
   const input=$("globalHourCorrection");
   const value=input.value.trim()===""?0:Number(input.value);
