@@ -1,0 +1,7 @@
+Anwesenheits-App – Supabase als einzige Datenquelle
+
+Diese Version enthält den Button „Aktualisieren“. Nach erfolgreichem Laden aus Supabase werden lokale Monats-Caches entfernt und ausschließlich aus den Cloud-Datensätzen neu aufgebaut. Lokale Stundenkorrekturen werden nicht mehr mit Cloud-Korrekturen vermischt; die Korrekturen werden aus course_participants.correction_factor übernommen. Die gemeinsame Korrektur wird aus course_settings geladen; fehlt der Eintrag, wird 0 verwendet.
+
+Wichtig: Diese Dateien sind noch nicht auf GitHub Pages veröffentlicht. Bitte zuerst auf dem Computer und dem iPhone jeweils ein Datenbackup herunterladen, bevor du Dateien ersetzt. Nach Veröffentlichung anmelden und „Aktualisieren“ drücken. Nicht „Speichern“ verwenden, bevor der Cloud-Stand erfolgreich geladen wurde.
+
+Die Änderung wurde nicht live gegen das Supabase-Projekt getestet. Sie löscht keine Supabase-Tabellen oder Cloud-Daten.

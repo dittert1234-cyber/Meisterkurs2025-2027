@@ -729,10 +729,10 @@ $("refreshNow")?.addEventListener("click",async()=>{
     return;
   }
   if(btn){btn.disabled=true;btn.textContent="Aktualisiert …";}
-  showStatus("Aktualisieren läuft: Cloud-Daten werden geladen und mit fehlenden lokalen Einträgen abgeglichen …",false,false);
+  showStatus("Aktualisieren läuft: Anwesenheitsdaten werden direkt aus Supabase geladen …",false,false);
   try {
     await window.attendanceCloud.refreshAll();
-    showStatus("✓ Aktualisiert. Cloud-Daten wurden geladen; fehlende lokale Einträge wurden ergänzt und der abgeglichene Stand gespeichert.",false,true);
+    showStatus("✓ Aktualisiert. Lokale Monats-Caches wurden durch die Daten aus Supabase ersetzt.",false,true);
   } catch(err) {
     console.error(err);
     showStatus("✕ Aktualisieren fehlgeschlagen. Bitte Verbindung prüfen. Fehler: "+(err.message||err),true);
@@ -830,21 +830,20 @@ renderArchiveList();
     if(!profile || !profile.approved) throw new Error('Dein Konto ist nicht freigegeben.');
     const {data:globalSetting,error:globalSettingError}=await sb.from('course_settings').select('setting_key,setting_value').eq('setting_key','global_hour_correction').maybeSingle();
     if(globalSettingError) throw new Error('Gemeinsame Stundenkorrektur konnte nicht geladen werden. Bitte SQL-Migration course_settings ausführen: '+globalSettingError.message);
-    if(globalSetting && globalSetting.setting_value!==null){localStorage.setItem('attendance-global-hour-correction',String(Number(globalSetting.setting_value)||0));}
+    localStorage.setItem('attendance-global-hour-correction',String(globalSetting && globalSetting.setting_value!==null ? (Number(globalSetting.setting_value)||0) : 0));
     const {data:remote,error}=await sb.from('course_participants').select('id,full_name,participant_number,correction_factor').order('created_at');
     if(error) throw error;
     if(remote && remote.length){
       remoteParticipants=remote;
       participants.splice(0,participants.length,...remote.map(r=>{const parts=(r.full_name||'').trim().split(/\s+/);return {first:parts.slice(0,-1).join(' ')||'',last:parts.slice(-1)[0]||'',kst:r.participant_number||''};}));
       saveParticipants();
-      // Korrekturwerte aus Supabase laden und lokal anhand Teilnehmer/KST zuordnen.
-      let cloudCorrections={};
-      try { cloudCorrections=JSON.parse(localStorage.getItem('attendance-hour-corrections')||'{}'); } catch { cloudCorrections={}; }
+      // Supabase ist maßgeblich: lokale Korrekturen niemals als Quelle übernehmen.
+      const cloudCorrections={};
       remote.forEach(r=>{
         const parts=(r.full_name||'').trim().split(/\s+/);
         const first=parts.slice(0,-1).join(' ')||''; const last=parts.slice(-1)[0]||'';
         const key=[r.participant_number||'',last,first].join('|');
-        if(r.correction_factor !== null && r.correction_factor !== undefined) cloudCorrections[key]=Number(r.correction_factor)||0;
+        cloudCorrections[key]=Number(r.correction_factor)||0;
       });
       localStorage.setItem('attendance-hour-corrections',JSON.stringify(cloudCorrections));
     } else {
@@ -868,36 +867,16 @@ renderArchiveList();
       monthData[mk].attendance[row.attendance_date][idx]=row.entry||'';
       cloudCells.add(`${row.attendance_date}|${idx}`);
     }
-    // Sicherheits-Merge: lokale Monate niemals pauschal löschen.
-    // Lokale, nichtleere Einträge bleiben erhalten; fehlende Daten werden aus Supabase ergänzt.
-    const localKeys=Object.keys(localStorage).filter(key=>/^attendance:\d{4}-\d{2}$/.test(key));
-    for(const key of localKeys){
-      const mk=key.slice('attendance:'.length);
-      let localData={};
-      try{localData=JSON.parse(localStorage.getItem(key)||'{}')||{};}catch{}
-      if(!monthData[mk]) monthData[mk]={dates:[],attendance:{}};
-      const target=monthData[mk];
-      const localDates=Array.isArray(localData.dates)?localData.dates:[];
-      for(const date of localDates){
-        if(!target.dates.includes(date)) target.dates.push(date);
-        target.attendance[date]=target.attendance[date]||{};
-        const localRow=localData.attendance?.[date]||{};
-        for(let i=0;i<participants.length;i++){
-          const localValue=String(localRow[i]??'').trim();
-          const hasCloudCell=cloudCells.has(`${date}|${i}`);
-          // Cloud-Zeilen haben Vorrang, auch wenn entry absichtlich leer ist.
-          // Lokale Daten ergänzen nur Zellen, für die es noch keine Cloud-Zeile gibt.
-          if(!hasCloudCell && localValue!=='') target.attendance[date][i]=localValue;
-        }
-      }
-    }
+    // Supabase ist die alleinige Datenquelle für Anwesenheit:
+    // nach erfolgreichem Cloud-Abruf alte lokale Monats-Caches entfernen und nur Cloud-Zeilen neu aufbauen.
+    Object.keys(localStorage)
+      .filter(key=>/^attendance:\d{4}-\d{2}$/.test(key))
+      .forEach(key=>localStorage.removeItem(key));
     Object.entries(monthData).forEach(([mk,data])=>{
       data.dates=[...new Set(data.dates)].sort();
       localStorage.setItem('attendance:'+mk,JSON.stringify(data));
     });
-    // Den zusammengeführten Bestand zurück in die Cloud schreiben.
-    // Leere Cloud: ebenso vorhandene lokale Monate übernehmen.
-    await saveAll();
+    // Wichtig: Ein Aktualisieren darf lokale/alte Daten nicht zurück in Supabase schreiben.
     loadMonth(); renderArchiveList(); renderOverview();
   }
   async function saveAll(){
