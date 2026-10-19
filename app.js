@@ -100,6 +100,30 @@ function installHistoricalSeed(){
   localStorage.setItem('attendance-historical-seed-v1','done');
 }
 
+function initialsForParticipant(i){
+  const p=participants[i] || {};
+  const known=["SD","MH","PS","VT","STS","YC","KW","EB","NB","KP"];
+  return known[i] || ((p.first||"").trim()[0]+(p.last||"").trim()[0]).toUpperCase();
+}
+function normalizeAttendanceValue(value, i){
+  const v=String(value ?? "").trim().toUpperCase();
+  return v && v===initialsForParticipant(i) ? v : "";
+}
+function normalizeStoredMonths(){
+  Object.keys(localStorage).filter(key=>/^attendance:\d{4}-\d{2}$/.test(key)).forEach(key=>{
+    try{
+      const data=JSON.parse(localStorage.getItem(key)||"{}");
+      for(const date of (data.dates||[])){
+        const row=(data.attendance||{})[date] || {};
+        for(let i=0;i<participants.length;i++) row[i]=normalizeAttendanceValue(row[i],i);
+        data.attendance=data.attendance||{}; data.attendance[date]=row;
+      }
+      localStorage.setItem(key,JSON.stringify(data));
+    }catch(err){console.warn("Monat konnte nicht bereinigt werden:",key,err);}
+  });
+}
+normalizeStoredMonths();
+
 const $ = id => document.getElementById(id);
 function saveParticipants(){ localStorage.setItem("attendance-participants", JSON.stringify(participants)); }
 const now = new Date();
@@ -184,11 +208,11 @@ function renderDayReview(){
     const tdStatus=document.createElement("td");
     const status=document.createElement("select");
     status.className="attendance-status";
-    [["","Nicht eingetragen / abwesend"],["X","Anwesend"],["/","Abwesend"],["E","Entschuldigt"],["K","Krank"],["U","Unentschuldigt"]].forEach(([value,label])=>{
+    [["","–"],[initialsForParticipant(index),initialsForParticipant(index)]].forEach(([value,label])=>{
       const option=document.createElement("option");option.value=value;option.textContent=label;status.appendChild(option);
     });
     const current=(attendance[date]||{})[index]||"";
-    status.value=isPresent(current)?"X":current==="/"?"/":["E","K","U"].includes(current)?current:"";
+    status.value=normalizeAttendanceValue(current,index);
     status.addEventListener("change",()=>{
       attendance[date]=attendance[date]||{};
       attendance[date][index]=status.value;
@@ -321,29 +345,24 @@ function render(){
     dates.forEach(date=>{
       const td=document.createElement("td");
       td.className="attendance-cell";
-      const input=document.createElement("input");input.maxLength=12;input.placeholder="—";
-      input.value=(attendance[date]||{})[i]||"";
-      td.classList.toggle("has-entry",isPresent(input.value));
-      td.classList.toggle("is-uncertain",input.value.trim()==="?");
-      input.setAttribute("aria-label",`${person.first} ${person.last}, ${date}`);
-      input.title="Feld anklicken, um das Kürzel automatisch einzutragen; danach bei Bedarf bearbeiten";
-      input.addEventListener("click",()=>{
-        if(!input.value.trim()){
-          const initials=["SD","MH","PS","VT","STS","YC","KW","EB","NB","KP"][i] || (person.first[0]+person.last[0]).toUpperCase();
-          input.value=initials;
-          attendance[date]=attendance[date]||{};attendance[date][i]=initials;
-          td.classList.add("has-entry");
-          td.classList.remove("is-uncertain");
-          saveMonth();renderOverview();
-        }
+      const input=document.createElement("select");
+      input.className="attendance-status attendance-cell-select";
+      const initials=initialsForParticipant(i);
+      [["","–"],[initials,initials]].forEach(([value,label])=>{
+        const option=document.createElement("option"); option.value=value; option.textContent=label; input.appendChild(option);
       });
+      input.value=normalizeAttendanceValue((attendance[date]||{})[i]||"",i);
+      td.classList.toggle("has-entry",isPresent(input.value));
+      input.setAttribute("aria-label",`${person.first} ${person.last}, ${date}`);
+      input.title="Nur Teilnehmerkürzel oder Gedankenstrich auswählen";
       input.addEventListener("change",()=>{
         attendance[date]=attendance[date]||{};
-        attendance[date][i]=input.value.trim();
+        attendance[date][i]=normalizeAttendanceValue(input.value,i);
+        input.value=attendance[date][i];
         td.classList.toggle("has-entry",isPresent(input.value));
-        td.classList.toggle("is-uncertain",input.value.trim()==="?");
+        td.classList.remove("is-uncertain");
         saveMonth();renderOverview();
-        showStatus("Tagesfeld aktualisiert und gespeichert.",false,true);
+        showStatus("Anwesenheit gespeichert.",false,true);
       });
       td.appendChild(input);tr.appendChild(td);
     });
@@ -751,6 +770,11 @@ renderArchiveList();
     }
     Object.entries(monthData).forEach(([mk,data])=>{
       data.dates=[...new Set(data.dates)].sort();
+      for(const date of data.dates){
+        const row=data.attendance[date]||{};
+        for(let i=0;i<participants.length;i++) row[i]=normalizeAttendanceValue(row[i],i);
+        data.attendance[date]=row;
+      }
       localStorage.setItem('attendance:'+mk,JSON.stringify(data));
     });
     // Den zusammengeführten Bestand zurück in die Cloud schreiben.
