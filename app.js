@@ -763,6 +763,9 @@ renderArchiveList();
     if(daysErr) throw daysErr;
     // Build a month cache from the shared attendance rows.
     const monthData={};
+    // Vorhandene Cloud-Zeilen auch dann markieren, wenn entry leer ist.
+    // So überschreibt ein alter lokaler Eintrag keine bewusst leere Cloud-Zelle.
+    const cloudCells=new Set();
     for(const row of (days||[])){
       const mk=row.attendance_date.slice(0,7); if(!monthData[mk]) monthData[mk]={dates:[],attendance:{}};
       const idx=participants.findIndex((p,i)=>participantMap.get(i)===row.participant_id);
@@ -770,6 +773,7 @@ renderArchiveList();
       if(!monthData[mk].dates.includes(row.attendance_date)) monthData[mk].dates.push(row.attendance_date);
       monthData[mk].attendance[row.attendance_date]=monthData[mk].attendance[row.attendance_date]||{};
       monthData[mk].attendance[row.attendance_date][idx]=row.entry||'';
+      cloudCells.add(`${row.attendance_date}|${idx}`);
     }
     // Sicherheits-Merge: lokale Monate niemals pauschal löschen.
     // Lokale, nichtleere Einträge bleiben erhalten; fehlende Daten werden aus Supabase ergänzt.
@@ -787,8 +791,10 @@ renderArchiveList();
         const localRow=localData.attendance?.[date]||{};
         for(let i=0;i<participants.length;i++){
           const localValue=String(localRow[i]??'').trim();
-          const remoteValue=String(target.attendance[date][i]??'').trim();
-          if(localValue!=='' || remoteValue==='') target.attendance[date][i]=localValue;
+          const hasCloudCell=cloudCells.has(`${date}|${i}`);
+          // Cloud-Zeilen haben Vorrang, auch wenn entry absichtlich leer ist.
+          // Lokale Daten ergänzen nur Zellen, für die es noch keine Cloud-Zeile gibt.
+          if(!hasCloudCell && localValue!=='') target.attendance[date][i]=localValue;
         }
       }
     }
@@ -829,15 +835,8 @@ renderArchiveList();
       const nextMonthDate=new Date(year,monthNum,1);
       const monthEnd=`${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth()+1).padStart(2,'0')}-01`;
       const keptDates=[...new Set((data.dates||[]))].sort();
-      // A month cache is authoritative for which teaching dates exist.
-      // Delete cloud rows for dates removed from that month, so they cannot reappear after login.
-      let deleteQuery=sb.from('attendance_days').delete()
-        .gte('attendance_date',monthStart).lt('attendance_date',monthEnd);
-      if(keptDates.length){
-        deleteQuery=deleteQuery.not('attendance_date','in',`(${keptDates.map(date=>`\"${date}\"`).join(',')})`);
-      }
-      const {error:deleteError}=await deleteQuery;
-      if(deleteError) throw new Error(`Gelöschte Unterrichtstage aus ${month} konnten nicht in Supabase abgeglichen werden: ${deleteError.message}`);
+      // Absichtlich keine Cloud-Löschungen: ein fehlender lokaler Unterrichtstag
+      // ist kein Beweis dafür, dass der gemeinsame Cloud-Tag gelöscht werden soll.
       for(const date of keptDates){
         const row=data.attendance?.[date]||{};
         for(let i=0;i<participants.length;i++){
