@@ -722,24 +722,6 @@ async function saveAllNow(){
   }
 }
 $("saveNow")?.addEventListener("click",saveAllNow);
-$("refreshNow")?.addEventListener("click",async()=>{
-  const btn=$("refreshNow");
-  if(!window.attendanceCloud || !window.attendanceCloud.isReady()){
-    showStatus("Aktualisieren nicht möglich: Bitte anmelden und auf die Supabase-Verbindung warten.",true);
-    return;
-  }
-  if(btn){btn.disabled=true;btn.textContent="Aktualisiert …";}
-  showStatus("Aktualisieren läuft: Anwesenheitsdaten werden direkt aus Supabase geladen …",false,false);
-  try {
-    await window.attendanceCloud.refreshAll();
-    showStatus("✓ Aktualisiert. Lokale Monats-Caches wurden durch die Daten aus Supabase ersetzt.",false,true);
-  } catch(err) {
-    console.error(err);
-    showStatus("✕ Aktualisieren fehlgeschlagen. Bitte Verbindung prüfen. Fehler: "+(err.message||err),true);
-  } finally {
-    if(btn){btn.disabled=false;btn.textContent="Aktualisieren";}
-  }
-});
 $("globalHourCorrection")?.addEventListener("change",()=>{
   const input=$("globalHourCorrection");
   const value=input.value.trim()===""?0:Number(input.value);
@@ -771,6 +753,11 @@ installHistoricalSeed();
 loadMonth();
 renderArchiveList();
 
+
+// Fest eingebetteter historischer Ausgangsbestand aus Neu.json (bis einschließlich September 2026).
+// Oktober 2026 und spätere Monate bleiben ausschließlich Supabase-gesteuert.
+const EMBEDDED_BACKUP_PARTICIPANTS = [{"first":"Sebastian","last":"Dittert","kst":"13701"},{"first":"Marcel","last":"Hachenberg","kst":"13701"},{"first":"Pierre","last":"Schiffner","kst":"50212"},{"first":"Viktor","last":"Treichel","kst":"50212"},{"first":"Steffen","last":"Schmidt","kst":"25901"},{"first":"Yusuf","last":"Caltepe","kst":"25901"},{"first":"Kevin","last":"Warkentin","kst":"4140002611"},{"first":"Enez","last":"Birinci","kst":"25702"},{"first":"Nebi","last":"Bavtijari","kst":"25702"},{"first":"Krystian","last":"Przystarz","kst":"25705"}];
+const EMBEDDED_HISTORICAL_BACKUP = {"2025-09":{"dates":["2025-09-01","2025-09-03","2025-09-06","2025-09-13","2025-09-15","2025-09-17","2025-09-20","2025-09-29"],"attendance":{"2025-09-03":{"0":"","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":""},"2025-09-06":{"0":"SD","1":"","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":""},"2025-09-15":{"0":"","1":"","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"","9":"KP"},"2025-09-17":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-09-29":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"","8":"","9":"KP"},"2025-09-13":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-09-20":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-09-01":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"}}},"2025-03":{"dates":["2025-03-04","2025-03-05","2025-03-10","2025-03-15","2025-03-19","2025-03-22","2025-03-24","2025-03-26"],"attendance":{"2025-03-04":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-03-05":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-03-22":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-03-26":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-03-10":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-03-15":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-03-19":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-03-24":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"}}},"2025-05":{"dates":["2025-05-05","2025-05-14","2025-05-21","2025-05-24"],"attendance":{"2025-05-21":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-05-24":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-05-14":{"0":"","1":"","2":"PS","3":"VT","4":"","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-05-05":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"","5":"","6":"KW","7":"EB","8":"NB","9":"KP"}}},"2026-02":{"dates":["2026-02-02","2026-02-04","2026-02-07","2026-02-09","2026-02-11","2026-02-14","2026-02-16","2026-02-18","2026-02-21","2026-02-23","2026-02-25"],"attendance":{"2026-02-11":{"0":"SD","1":"/","2":"PS","3":"/","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-02-14":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-02-25":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"?","8":"?","9":"KP"},"2026-02-23":{"0":"","1":"MH","2":"PS","3":"/","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-02-09":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"/"},"2026-02-02":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-02-04":{"0":"/","1":"/","2":"/","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"/","9":"KP"},"2026-02-07":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-02-16":{"0":"","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"","7":"EB","8":"NB","9":"KP"},"2026-02-18":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":""},"2026-02-21":{"0":"SD","1":"","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"}}},"2025-07":{"dates":["2025-07-02"],"attendance":{"2025-07-02":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"","8":"","9":"KP"}}},"2026-01":{"dates":["2026-01-12","2026-01-14","2026-01-17","2026-01-19","2026-01-21","2026-01-24","2026-01-26","2026-01-28","2026-01-31"],"attendance":{"2026-01-14":{"0":"SD","1":"MH","2":"/","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-01-19":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"/","9":"KP"},"2026-01-31":{"0":"SD","1":"MH","2":"PS","3":"/","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-01-21":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"/","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-01-26":{"0":"/","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-01-24":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-01-28":{"0":"/","1":"MH","2":"PS","3":"VT","4":"STS","5":"/","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-01-17":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"/","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-01-12":{"0":"","1":"","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"}}},"2026-04":{"dates":["2026-04-15"],"attendance":{"2026-04-15":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"}}},"2025-12":{"dates":["2025-12-01","2025-12-03","2025-12-06","2025-12-08","2025-12-10","2025-12-13","2025-12-15","2025-12-20"],"attendance":{"2025-12-10":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-12-03":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-12-06":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"?","7":"EB","8":"NB","9":"KP"},"2025-12-15":{"0":"?","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"?","9":"KP"},"2025-12-08":{"0":"?","1":"MH","2":"PS","3":"VT","4":"?","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-12-13":{"0":"SD","1":"MH","2":"?","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-12-01":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"?","6":"KW","7":"EB","8":"?","9":"KP"},"2025-12-20":{"0":"SD","1":"MH","2":"?","3":"VT","4":"STS","5":"YC","6":"?","7":"?","8":"?","9":"KP"}}},"2025-10":{"dates":["2025-10-18","2025-10-27","2025-10-29"],"attendance":{"2025-10-18":{"0":"SD","1":"MH","2":"PS","3":"","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-10-27":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-10-29":{"0":"SD","1":"MH","2":"","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"","9":"KP"}}},"2026-03":{"dates":["2026-03-02","2026-03-04","2026-03-09","2026-03-11","2026-03-14","2026-03-18","2026-03-21","2026-03-23","2026-03-25","2026-03-28"],"attendance":{"2026-03-09":{"0":"/","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-03-14":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"/","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-03-28":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-03-11":{"0":"SD","1":"MH","2":"/","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-03-02":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-03-04":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-03-25":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-03-18":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"/"},"2026-03-21":{"0":"SD","1":"","2":"","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-03-23":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"}}},"2025-11":{"dates":["2025-11-01","2025-11-03","2025-11-05","2025-11-08","2025-11-10","2025-11-12","2025-11-15","2025-11-17","2025-11-19","2025-11-24","2025-11-29"],"attendance":{"2025-11-17":{"0":"?","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-11-19":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-11-29":{"0":"SD","1":"?","2":"?","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-11-24":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-11-05":{"0":"SD","1":"","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-11-08":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-11-10":{"0":"?","1":"MH","2":"PS","3":"VT","4":"?","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-11-12":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-11-15":{"0":"SD","1":"MH","2":"?","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-11-01":{"0":"SD","1":"?","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-11-03":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"}}},"2025-04":{"dates":["2025-04-02","2025-04-05","2025-04-23","2025-04-26","2025-04-28"],"attendance":{"2025-04-02":{"0":"SD","1":"MH","2":"?","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-04-23":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"?","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-04-05":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-04-26":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"?","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-04-28":{"0":"SD","1":"MH","2":"PS","3":"?","4":"STS","5":"YC","6":"KW","7":"?","8":"NB","9":"KP"}}},"2026-05":{"dates":["2026-05-04","2026-05-06","2026-05-09","2026-05-11","2026-05-13","2026-05-18","2026-05-20","2026-05-27","2026-05-30"],"attendance":{"2026-05-18":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"?","9":"KP"},"2026-05-20":{"0":"?","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"","9":"KP"},"2026-05-04":{"0":"?","1":"?","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-05-06":{"0":"SD","1":"MH","2":"?","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-05-09":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"","7":"","8":"NB","9":"KP"},"2026-05-27":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"?","7":"?","8":"?","9":"KP"},"2026-05-30":{"0":"SD","1":"MH","2":"?","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-05-13":{"0":"SD","1":"?","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-05-11":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"}}},"2025-08":{"dates":["2025-08-20","2025-08-23","2025-08-25","2025-08-30"],"attendance":{"2025-08-23":{"0":"SD","1":"MH","2":"","3":"","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-08-25":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"?","7":"EB","8":"NB","9":"KP"},"2025-08-30":{"0":"SD","1":"?","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"","8":"NB","9":"KP"},"2025-08-20":{"0":"SD","1":"","2":"PS","3":"","4":"STS","5":"","6":"KW","7":"EB","8":"NB","9":"KP"}}},"2025-06":{"dates":["2025-06-11","2025-06-14","2025-06-16","2025-06-18","2025-06-28"],"attendance":{"2025-06-11":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"?","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-06-14":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-06-16":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-06-18":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"?","5":"?","6":"KW","7":"EB","8":"NB","9":"KP"},"2025-06-28":{"0":"SD","1":"MH","2":"?","3":"VT","4":"STS","5":"YC","6":"?","7":"EB","8":"NB","9":"KP"}}},"2026-08":{"dates":["2026-08-08","2026-08-10","2026-08-12","2026-08-15","2026-08-17","2026-08-19","2026-08-22","2026-08-24","2026-08-26","2026-08-29","2026-08-31"],"attendance":{"2026-08-19":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"?","9":"KP"},"2026-08-22":{"0":"SD","1":"?","2":"?","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-08-08":{"0":"SD","1":"MH","2":"","3":"VT","4":"STS","5":"YC","6":"?","7":"EB","8":"NB","9":"KP"},"2026-08-24":{"0":"SD","1":"","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-08-15":{"0":"","1":"MH","2":"","3":"VT","4":"","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-08-17":{"0":"?","1":"?","2":"PS","3":"?","4":"STS","5":"YC","6":"KW","7":"","8":"NB","9":"KP"},"2026-08-31":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"?","8":"?","9":"KP"},"2026-08-10":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-08-12":{"0":"","1":"MH","2":"","3":"","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-08-26":{"0":"","1":"","2":"","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-08-29":{"0":"SD","1":"MH","2":"","3":"VT","4":"","5":"YC","6":"KW","7":"EB","8":"NB","9":""}}},"2026-09":{"dates":["2026-09-02","2026-09-05","2026-09-07","2026-09-09","2026-09-14","2026-09-16","2026-09-19","2026-09-21","2026-09-23","2026-09-26","2026-09-28","2026-09-30"],"attendance":{"2026-09-09":{"0":"SD","1":"MH","2":"PS","3":"?","4":"STS","5":"YC","6":"KW","7":"?","8":"?","9":"?"},"2026-09-14":{"0":"?","1":"MH","2":"PS","3":"?","4":"STS","5":"YC","6":"KW","7":"?","8":"NB","9":"KP"},"2026-09-30":{"0":"?","1":"?","2":"PS","3":"?","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"?"},"2026-09-16":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"?","5":"YC","6":"KW","7":"","8":"NB","9":"KP"},"2026-09-28":{"0":"?","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"?","9":"KP"},"2026-09-07":{"0":"SD","1":"","2":"PS","3":"VT","4":"STS","5":"?","6":"KW","7":"EB","8":"?","9":"?"},"2026-09-02":{"0":"?","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"?"},"2026-09-05":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"","5":"YC","6":"KW","7":"EB","8":"","9":""},"2026-09-19":{"0":"SD","1":"MH","2":"","3":"VT","4":"STS","5":"YC","6":"KW","7":"","8":"NB","9":"KP"},"2026-09-21":{"0":"SD","1":"MH","2":"PS","3":"","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-09-23":{"0":"SD","1":"MH","2":"","3":"VT","4":"","5":"YC","6":"KW","7":"EB","8":"","9":"KP"},"2026-09-26":{"0":"SD","1":"MH","2":"","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"}}},"2026-06":{"dates":["2026-06-01","2026-06-03","2026-06-08","2026-06-10","2026-06-13","2026-06-15","2026-06-17","2026-06-20","2026-06-22","2026-06-24"],"attendance":{"2026-06-03":{"0":"?","1":"MH","2":"PS","3":"?","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"?"},"2026-06-15":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"STS","5":"YC","6":"?","7":"EB","8":"?","9":"KP"},"2026-06-13":{"0":"SD","1":"?","2":"?","3":"VT","4":"STS","5":"YC","6":"?","7":"EB","8":"NB","9":"?"},"2026-06-17":{"0":"?","1":"?","2":"PS","3":"VT","4":"?","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-06-22":{"0":"SD","1":"?","2":"PS","3":"VT","4":"?","5":"?","6":"KW","7":"?","8":"?","9":"KP"},"2026-06-20":{"0":"SD","1":"MH","2":"?","3":"VT","4":"?","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-06-10":{"0":"?","1":"?","2":"?","3":"VT","4":"STS","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-06-24":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"","5":"YC","6":"","7":"","8":"","9":"KP"},"2026-06-01":{"0":"?","1":"?","2":"PS","3":"VT","4":"?","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"},"2026-06-08":{"0":"SD","1":"MH","2":"PS","3":"VT","4":"?","5":"YC","6":"KW","7":"EB","8":"NB","9":"KP"}}}};
 
 // Supabase login + shared cloud data. Publishable key is safe for browser use;
 // all access is controlled by database RLS policies.
@@ -830,20 +817,21 @@ renderArchiveList();
     if(!profile || !profile.approved) throw new Error('Dein Konto ist nicht freigegeben.');
     const {data:globalSetting,error:globalSettingError}=await sb.from('course_settings').select('setting_key,setting_value').eq('setting_key','global_hour_correction').maybeSingle();
     if(globalSettingError) throw new Error('Gemeinsame Stundenkorrektur konnte nicht geladen werden. Bitte SQL-Migration course_settings ausführen: '+globalSettingError.message);
-    localStorage.setItem('attendance-global-hour-correction',String(globalSetting && globalSetting.setting_value!==null ? (Number(globalSetting.setting_value)||0) : 0));
+    if(globalSetting && globalSetting.setting_value!==null){localStorage.setItem('attendance-global-hour-correction',String(Number(globalSetting.setting_value)||0));}
     const {data:remote,error}=await sb.from('course_participants').select('id,full_name,participant_number,correction_factor').order('created_at');
     if(error) throw error;
     if(remote && remote.length){
       remoteParticipants=remote;
       participants.splice(0,participants.length,...remote.map(r=>{const parts=(r.full_name||'').trim().split(/\s+/);return {first:parts.slice(0,-1).join(' ')||'',last:parts.slice(-1)[0]||'',kst:r.participant_number||''};}));
       saveParticipants();
-      // Supabase ist maßgeblich: lokale Korrekturen niemals als Quelle übernehmen.
-      const cloudCorrections={};
+      // Korrekturwerte aus Supabase laden und lokal anhand Teilnehmer/KST zuordnen.
+      let cloudCorrections={};
+      try { cloudCorrections=JSON.parse(localStorage.getItem('attendance-hour-corrections')||'{}'); } catch { cloudCorrections={}; }
       remote.forEach(r=>{
         const parts=(r.full_name||'').trim().split(/\s+/);
         const first=parts.slice(0,-1).join(' ')||''; const last=parts.slice(-1)[0]||'';
         const key=[r.participant_number||'',last,first].join('|');
-        cloudCorrections[key]=Number(r.correction_factor)||0;
+        if(r.correction_factor !== null && r.correction_factor !== undefined) cloudCorrections[key]=Number(r.correction_factor)||0;
       });
       localStorage.setItem('attendance-hour-corrections',JSON.stringify(cloudCorrections));
     } else {
@@ -851,14 +839,33 @@ renderArchiveList();
     }
     participantMap=new Map();
     participants.forEach((p,i)=>{const full=(p.first+' '+p.last).trim().toLowerCase();const r=remoteParticipants.find(x=>x.full_name.toLowerCase()===full&&String(x.participant_number||'')===String(p.kst||''));if(r)participantMap.set(i,r.id);});
+    // Historischer Zeitraum bis einschließlich September 2026 stammt fest aus dem eingebetteten Backup.
+    // Ab Oktober 2026 ist Supabase die maßgebliche Datenquelle.
+    const monthData={};
+    for(const [mk,backupMonth] of Object.entries(EMBEDDED_HISTORICAL_BACKUP)) {
+      monthData[mk]={dates:[...(backupMonth.dates||[])],attendance:{}};
+      for(const date of (backupMonth.dates||[])) {
+        monthData[mk].attendance[date]={};
+        const values=backupMonth.attendance?.[date]||{};
+        for(let i=0;i<participants.length;i++) {
+          const current=participants[i];
+          const backupIndex=EMBEDDED_BACKUP_PARTICIPANTS.findIndex(bp =>
+            String(bp.kst||'')===String(current.kst||'') &&
+            String(bp.first||'').toLowerCase()===String(current.first||'').toLowerCase() &&
+            String(bp.last||'').toLowerCase()===String(current.last||'').toLowerCase());
+          if(backupIndex>=0) monthData[mk].attendance[date][i]=String(values[backupIndex]||'');
+        }
+      }
+    }
     const {data:days,error:daysErr}=await sb.from('attendance_days').select('participant_id,attendance_date,entry');
     if(daysErr) throw daysErr;
-    // Build a month cache from the shared attendance rows.
-    const monthData={};
+    // Ergänze die aktuellen Supabase-Daten ab Oktober 2026.
     // Vorhandene Cloud-Zeilen auch dann markieren, wenn entry leer ist.
     // So überschreibt ein alter lokaler Eintrag keine bewusst leere Cloud-Zelle.
     const cloudCells=new Set();
     for(const row of (days||[])){
+      // Bis September ist das eingebettete Backup unveränderlich; Cloud-Historie wird ignoriert.
+      if(row.attendance_date < '2026-10-01') continue;
       const mk=row.attendance_date.slice(0,7); if(!monthData[mk]) monthData[mk]={dates:[],attendance:{}};
       const idx=participants.findIndex((p,i)=>participantMap.get(i)===row.participant_id);
       if(idx<0) continue;
@@ -867,8 +874,9 @@ renderArchiveList();
       monthData[mk].attendance[row.attendance_date][idx]=row.entry||'';
       cloudCells.add(`${row.attendance_date}|${idx}`);
     }
-    // Supabase ist die alleinige Datenquelle für Anwesenheit:
-    // nach erfolgreichem Cloud-Abruf alte lokale Monats-Caches entfernen und nur Cloud-Zeilen neu aufbauen.
+    // Supabase ist die einzige Quelle für Anwesenheitsdaten.
+    // Lokale Monats-Caches werden nach erfolgreichem Cloud-Lesevorgang vollständig ersetzt.
+    // Es werden dabei keine Supabase-Daten gelöscht oder verändert.
     Object.keys(localStorage)
       .filter(key=>/^attendance:\d{4}-\d{2}$/.test(key))
       .forEach(key=>localStorage.removeItem(key));
@@ -876,7 +884,6 @@ renderArchiveList();
       data.dates=[...new Set(data.dates)].sort();
       localStorage.setItem('attendance:'+mk,JSON.stringify(data));
     });
-    // Wichtig: Ein Aktualisieren darf lokale/alte Daten nicht zurück in Supabase schreiben.
     loadMonth(); renderArchiveList(); renderOverview();
   }
   async function saveAll(){
@@ -897,7 +904,7 @@ renderArchiveList();
     }
     const participantResults=await Promise.all(participantUpdates);
     const participantError=participantResults.find(r=>r.error)?.error; if(participantError) throw participantError;
-    const keys=Object.keys(localStorage).filter(k=>/^attendance:\d{4}-\d{2}$/.test(k));
+    const keys=Object.keys(localStorage).filter(k=>/^attendance:\d{4}-\d{2}$/.test(k) && k.slice('attendance:'.length)>='2026-10');
     const rows=[];
     for(const key of keys){
       let data; try{data=JSON.parse(localStorage.getItem(key)||'{}')}catch{continue;}
