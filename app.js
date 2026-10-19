@@ -100,6 +100,8 @@ function installHistoricalSeed(){
   localStorage.setItem('attendance-historical-seed-v1','done');
 }
 
+const $ = id => document.getElementById(id);
+function saveParticipants(){ localStorage.setItem("attendance-participants", JSON.stringify(participants)); }
 function initialsForParticipant(i){
   const p=participants[i] || {};
   const known=["SD","MH","PS","VT","STS","YC","KW","EB","NB","KP"];
@@ -123,9 +125,6 @@ function normalizeStoredMonths(){
   });
 }
 normalizeStoredMonths();
-
-const $ = id => document.getElementById(id);
-function saveParticipants(){ localStorage.setItem("attendance-participants", JSON.stringify(participants)); }
 const now = new Date();
 const monthInput = $("month");
 monthInput.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
@@ -168,6 +167,17 @@ function saveHourSettings(){
   localStorage.setItem("attendance-hour-settings", JSON.stringify(hourSettings));
   renderOverview();
 }
+function getGlobalHourCorrection(){
+  const value=Number(localStorage.getItem("attendance-global-hour-correction")||0);
+  return Number.isFinite(value)?value:0;
+}
+function setGlobalHourCorrection(value){
+  const parsed=Number(value);
+  const next=Number.isFinite(parsed)?parsed:0;
+  localStorage.setItem("attendance-global-hour-correction",String(next));
+  renderOverview();
+  queueCloudSave();
+}
 function dayHours(date){
   const day = new Date(date+"T12:00:00").getDay(); // 0=Sun, 6=Sat
   if(day===0) return 0;
@@ -208,11 +218,11 @@ function renderDayReview(){
     const tdStatus=document.createElement("td");
     const status=document.createElement("select");
     status.className="attendance-status";
-    [["","–"],[initialsForParticipant(index),initialsForParticipant(index)]].forEach(([value,label])=>{
+    [["","Nicht eingetragen / abwesend"],["X","Anwesend"],["/","Abwesend"],["E","Entschuldigt"],["K","Krank"],["U","Unentschuldigt"]].forEach(([value,label])=>{
       const option=document.createElement("option");option.value=value;option.textContent=label;status.appendChild(option);
     });
     const current=(attendance[date]||{})[index]||"";
-    status.value=normalizeAttendanceValue(current,index);
+    status.value=isPresent(current)?"X":current==="/"?"/":["E","K","U"].includes(current)?current:"";
     status.addEventListener("change",()=>{
       attendance[date]=attendance[date]||{};
       attendance[date][index]=status.value;
@@ -278,9 +288,13 @@ function renderOverview(){
   const allDates=new Set();
   months.forEach(({data})=>(data.dates||[]).forEach(d=>allDates.add(d)));
   const datesAll=[...allDates].sort();
-  const scheduledHours=datesAll.reduce((sum,d)=>sum+dayHours(d),0);
+  const rawScheduledHours=datesAll.reduce((sum,d)=>sum+dayHours(d),0);
+  const globalCorrection=getGlobalHourCorrection();
+  const scheduledHours=Math.max(0,rawScheduledHours+globalCorrection);
+  const correctionInput=$("globalHourCorrection");
+  if(correctionInput && document.activeElement!==correctionInput) correctionInput.value=String(globalCorrection);
   const courseSummary=$("courseHoursSummary");
-  if(courseSummary) courseSummary.textContent=`Unterricht bisher: ${scheduledHours.toLocaleString("de-DE",{maximumFractionDigits:1})} Stunden · ${datesAll.length} Unterrichtstage`;
+  if(courseSummary) courseSummary.textContent=`Unterricht bisher: ${scheduledHours.toLocaleString("de-DE",{maximumFractionDigits:1})} Stunden nach Korrektur (${rawScheduledHours.toLocaleString("de-DE",{maximumFractionDigits:1})} erfasst, ${globalCorrection>0?"+":""}${globalCorrection.toLocaleString("de-DE",{maximumFractionDigits:1})} Std. Korrektur) · ${datesAll.length} Unterrichtstage`;
   let corrections={};
   try { corrections=JSON.parse(localStorage.getItem("attendance-hour-corrections")||"{}"); } catch { corrections={}; }
   body.innerHTML="";
@@ -633,6 +647,13 @@ async function saveAllNow(){
   }
 }
 $("saveNow")?.addEventListener("click",saveAllNow);
+$("globalHourCorrection")?.addEventListener("change",()=>{
+  const input=$("globalHourCorrection");
+  const value=input.value.trim()===""?0:Number(input.value);
+  if(!Number.isFinite(value)){showStatus("Bitte eine gültige Stundenkorrektur eingeben, z. B. -10 oder +5.",true);return;}
+  setGlobalHourCorrection(value);
+  showStatus("Gemeinsame Stundenkorrektur übernommen; Synchronisierung läuft.",false,false);
+});
 
 
 function activateMenu(activeId){
@@ -714,6 +735,9 @@ renderArchiveList();
     if(!activeUser) throw new Error('Bitte anmelden.');
     const profile=await getProfile(activeUser);
     if(!profile || !profile.approved) throw new Error('Dein Konto ist nicht freigegeben.');
+    const {data:globalSetting,error:globalSettingError}=await sb.from('course_settings').select('setting_key,setting_value').eq('setting_key','global_hour_correction').maybeSingle();
+    if(globalSettingError) throw new Error('Gemeinsame Stundenkorrektur konnte nicht geladen werden. Bitte SQL-Migration course_settings ausführen: '+globalSettingError.message);
+    if(globalSetting && globalSetting.setting_value!==null){localStorage.setItem('attendance-global-hour-correction',String(Number(globalSetting.setting_value)||0));}
     const {data:remote,error}=await sb.from('course_participants').select('id,full_name,participant_number,correction_factor').order('created_at');
     if(error) throw error;
     if(remote && remote.length){
@@ -770,11 +794,6 @@ renderArchiveList();
     }
     Object.entries(monthData).forEach(([mk,data])=>{
       data.dates=[...new Set(data.dates)].sort();
-      for(const date of data.dates){
-        const row=data.attendance[date]||{};
-        for(let i=0;i<participants.length;i++) row[i]=normalizeAttendanceValue(row[i],i);
-        data.attendance[date]=row;
-      }
       localStorage.setItem('attendance:'+mk,JSON.stringify(data));
     });
     // Den zusammengeführten Bestand zurück in die Cloud schreiben.
@@ -785,6 +804,9 @@ renderArchiveList();
   async function saveAll(){
     if(!activeUser) throw new Error('Bitte anmelden.');
     const profile=await getProfile(activeUser); if(!profile?.approved) throw new Error('Dein Konto ist nicht freigegeben.');
+    const globalCorrection=getGlobalHourCorrection();
+    const {error:globalSaveError}=await sb.from('course_settings').upsert({setting_key:'global_hour_correction',setting_value:globalCorrection,updated_by:activeUser.id,updated_at:new Date().toISOString()},{onConflict:'setting_key'});
+    if(globalSaveError) throw new Error('Gemeinsame Stundenkorrektur konnte nicht in Supabase gespeichert werden. Bitte SQL-Migration course_settings ausführen: '+globalSaveError.message);
     await upsertParticipantsFromLocal();
     const participantUpdates=[];
     for(let i=0;i<participants.length;i++){

@@ -53,3 +53,7 @@ In der Teilnehmerübersicht kann pro Person eine Stundenkorrektur eingetragen we
 ### Stundenübersicht und Handyansicht
 - Beim Aktualisieren mit vorhandenen Supabase-Anwesenheitsdaten werden lokale Monats-Caches ersetzt, damit keine alten Monate auf einzelnen Geräten stehen bleiben.
 - Die Teilnehmerübersicht wird auf kleinen Bildschirmen kompakter dargestellt; die Desktop-Regeln bleiben außerhalb des mobilen Breakpoints unverändert.
+
+
+## Neue gemeinsame Stundenkorrektur (v9)
+Vor Veröffentlichung die Datei `SUPABASE_MIGRATION_GEMEINSAME_KORREKTUR.sql` einmal im SQL Editor des aktuellen Supabase-Projekts ausführen. Sie legt die Tabelle `course_settings` mit RLS an, damit die gemeinsame Korrektur geräteübergreifend gespeichert werden kann. Danach die Dateien aus diesem Paket zu GitHub Pages hochladen. Die Anwesenheitsfelder sind nun Dropdowns; vorhandene Fragezeichen werden in der Auswahl als leer angezeigt, aber nicht automatisch aus den gespeicherten historischen Daten gelöscht.

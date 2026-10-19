@@ -68,8 +68,9 @@
     <button class="button secondary" id="backupData" type="button">Datenbackup herunterladen</button>
   </div>
   <section class="panel" id="overviewPanel">
-    <div class="panel-heading">
-      <div><h2>Teilnehmeranwesenheit</h2><p class="muted small">Stunden werden aus allen gespeicherten Monaten berechnet. Pro Teilnehmer kann eine Stundenkorrektur eingetragen werden, z. B. +5 oder -10.</p></div>
+    <div class="panel-heading overview-heading">
+      <div><h2>Teilnehmeranwesenheit</h2><p class="muted small">Stunden werden aus allen gespeicherten Monaten berechnet. Pro Teilnehmer kann eine individuelle Korrektur eingetragen werden.</p></div>
+      <div class="global-correction-control"><label for="globalHourCorrection">Gemeinsame Korrektur „Unterricht bisher“ (Std.)</label><input id="globalHourCorrection" type="number" step="0.5" value="0" aria-describedby="globalCorrectionHelp"><p class="muted small" id="globalCorrectionHelp">Beispiele: −10 oder +5. Gilt für alle Teilnehmer.</p></div>
     </div>
     <div class="summary-total" id="courseHoursSummary" aria-live="polite">Unterricht bisher: wird berechnet …</div>
     <div class="table-wrap">
