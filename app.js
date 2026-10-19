@@ -626,16 +626,91 @@ function downloadLocalBackup(){
 }
 $('backupData')?.addEventListener('click',downloadLocalBackup);
 
+function participantIdentity(p){
+  return [String(p?.kst||'').trim(),String(p?.last||'').trim().toLowerCase(),String(p?.first||'').trim().toLowerCase()].join('|');
+}
+function parseBackupText(text){
+  let data;
+  try { data=JSON.parse(text); } catch { throw new Error('Die Datei ist kein gültiges JSON-Backup.'); }
+  if(!data || data.format!=='meisterhaft-anwesenheit-backup-v1' || !data.items || typeof data.items!=='object' || Array.isArray(data.items)) {
+    throw new Error('Unbekanntes Backup-Format. Bitte ein Backup aus dieser Anwesenheits-App auswählen.');
+  }
+  return data;
+}
+async function restoreLocalBackup(file){
+  if(!file) return;
+  if(file.size>15*1024*1024) throw new Error('Die Backup-Datei ist ungewöhnlich groß (über 15 MB).');
+  const backup=parseBackupText(await file.text());
+  const items=backup.items;
+  let backupParticipants=[];
+  try { backupParticipants=JSON.parse(items['attendance-participants']||'[]'); } catch {}
+  if(!Array.isArray(backupParticipants) || !backupParticipants.length) backupParticipants=participants.map(p=>({...p}));
+  const currentByIdentity=new Map();
+  participants.forEach((p,i)=>currentByIdentity.set(participantIdentity(p),i));
+  const indexMap=new Map();
+  backupParticipants.forEach((p,oldIndex)=>{
+    const match=currentByIdentity.get(participantIdentity(p));
+    if(match!==undefined) indexMap.set(String(oldIndex),match);
+  });
+  const monthEntries=Object.entries(items).filter(([key])=>/^attendance:\d{4}-\d{2}$/.test(key));
+  if(!monthEntries.length) throw new Error('Das Backup enthält keine gespeicherten Unterrichtsmonate.');
+  const restoredMonths=[];
+  for(const [key,raw] of monthEntries){
+    let data; try { data=JSON.parse(raw||'{}'); } catch { throw new Error('Der Monat '+key.slice(11)+' ist im Backup beschädigt. Es wurde nichts importiert.'); }
+    if(!data || !Array.isArray(data.dates) || !data.attendance || typeof data.attendance!=='object') {
+      throw new Error('Der Monat '+key.slice(11)+' hat eine ungültige Struktur. Es wurde nichts importiert.');
+    }
+    const remapped={dates:[...new Set(data.dates.filter(d=>typeof d==='string' && /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort(),attendance:{}};
+    for(const date of remapped.dates){
+      const oldRow=data.attendance[date]||{}; const newRow={};
+      for(const [oldIndex,newIndex] of indexMap.entries()){
+        if(Object.prototype.hasOwnProperty.call(oldRow,oldIndex)) newRow[newIndex]=oldRow[oldIndex];
+      }
+      remapped.attendance[date]=newRow;
+    }
+    restoredMonths.push([key,JSON.stringify(remapped)]);
+  }
+  // Validate all content first, then write. Keep a recoverable copy of the current browser data before changes.
+  downloadLocalBackup();
+  for(const [key,value] of Object.entries(items)){
+    if(!key || typeof value!=='string') continue;
+    if(key==='attendance-participants' || key==='attendance-global-hour-correction' || /^attendance:\d{4}-\d{2}$/.test(key)) continue;
+    if(key.startsWith('attendance-')) localStorage.setItem(key,value);
+  }
+  restoredMonths.forEach(([key,value])=>localStorage.setItem(key,value));
+  localStorage.setItem('attendance-backup-restore-pending','true');
+  loadMonth(); renderArchiveList(); renderOverview();
+  const skipped=backupParticipants.length-indexMap.size;
+  showStatus(`Backup eingelesen: ${restoredMonths.length} Monat(e). Klicke jetzt auf „Speichern“, damit die Daten mit Supabase abgeglichen werden. Vorhandene Cloud-Zellen haben Vorrang; fehlende Cloud-Einträge werden ergänzt.${skipped?` ${skipped} Teilnehmer aus dem Backup konnten nicht eindeutig zugeordnet werden und wurden für den Import ausgelassen.`:''}`,false,true);
+}
+$('restoreBackup')?.addEventListener('click',()=>$('backupFileInput')?.click());
+$('backupFileInput')?.addEventListener('change',async event=>{
+  const input=event.currentTarget; const file=input.files?.[0]; if(!file) return;
+  const confirmed=confirm('Backup einlesen? Vorhandene lokale Monatsdaten können ersetzt werden. Vorhandene Supabase-Zellen werden beim anschließenden Speichern geschützt und haben Vorrang. Vor dem Import wird zusätzlich ein Backup des aktuellen Browserstands heruntergeladen.');
+  if(!confirmed){input.value='';return;}
+  try { await restoreLocalBackup(file); }
+  catch(err){ console.error(err); showStatus('Backup konnte nicht wiederhergestellt werden: '+(err.message||err),true); }
+  finally { input.value=''; }
+});
+
 async function saveAllNow(){
   const btn=$("saveNow");
   if(btn){btn.disabled=true;btn.textContent="Speichert …";}
   if(cloudSaveTimer){clearTimeout(cloudSaveTimer);cloudSaveTimer=null;}
   saveAllLocal();
+  // saveMonth may queue an automatic sync; the explicit save below handles it once.
+  if(cloudSaveTimer){clearTimeout(cloudSaveTimer);cloudSaveTimer=null;}
   showStatus("Speichern läuft – Daten werden an Supabase übertragen …",false,false);
   try {
     if(window.attendanceCloud && window.attendanceCloud.isReady()) {
-      await window.attendanceCloud.saveAll();
-      showStatus("✓ Erfolgreich gespeichert – Supabase hat die Änderungen angenommen.",false,true);
+      if(localStorage.getItem('attendance-backup-restore-pending')==='true' && typeof window.attendanceCloud.refreshAll==='function') {
+        await window.attendanceCloud.refreshAll();
+        localStorage.removeItem('attendance-backup-restore-pending');
+        showStatus("✓ Backup abgeglichen und gespeichert. Vorhandene Cloud-Zellen blieben geschützt; fehlende Einträge wurden ergänzt.",false,true);
+      } else {
+        await window.attendanceCloud.saveAll();
+        showStatus("✓ Erfolgreich gespeichert – Supabase hat die Änderungen angenommen.",false,true);
+      }
     } else {
       showStatus("Nur auf diesem Gerät gespeichert – nicht in Supabase. Bitte anmelden und erneut speichern.",true);
     }
